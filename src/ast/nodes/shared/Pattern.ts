@@ -1,9 +1,9 @@
-import { WritableEntity } from '../../Entity';
-import LocalVariable from '../../variables/LocalVariable';
-import { ExpressionEntity } from './Expression';
-import { Node } from './Node';
+import type { WritableEntity } from '../../Entity';
+import type LocalVariable from '../../variables/LocalVariable';
+import type { ExpressionEntity } from './Expression';
+import type { Node } from './Node';
 
 export interface PatternNode extends WritableEntity, Node {
-	declare(kind: string, init: ExpressionEntity | null): LocalVariable[];
+	declare(kind: string, init: ExpressionEntity): LocalVariable[];
 	markDeclarationReached(): void;
 }

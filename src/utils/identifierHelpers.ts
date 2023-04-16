@@ -1,29 +1,25 @@
-export const reservedWords =
-	'break case class catch const continue debugger default delete do else export extends finally for function if import in instanceof let new return super switch this throw try typeof var void while with yield enum await implements package protected static interface private public'.split(
-		' '
-	);
-const builtins =
-	'Infinity NaN undefined null true false eval uneval isFinite isNaN parseFloat parseInt decodeURI decodeURIComponent encodeURI encodeURIComponent escape unescape Object Function Boolean Symbol Error EvalError InternalError RangeError ReferenceError SyntaxError TypeError URIError Number Math Date String RegExp Array Int8Array Uint8Array Uint8ClampedArray Int16Array Uint16Array Int32Array Uint32Array Float32Array Float64Array Map Set WeakMap WeakSet SIMD ArrayBuffer DataView JSON Promise Generator GeneratorFunction Reflect Proxy Intl'.split(
-		' '
-	);
+import RESERVED_NAMES from './RESERVED_NAMES';
 
-const blacklisted = new Set(reservedWords.concat(builtins));
+const illegalCharacters = /[^\w$]/g;
 
-const illegalCharacters = /[^$_a-zA-Z0-9]/g;
+const startsWithDigit = (value: string): boolean => /\d/.test(value[0]);
 
-const startsWithDigit = (str: string) => /\d/.test(str[0]);
+const needsEscape = (value: string) =>
+	startsWithDigit(value) || RESERVED_NAMES.has(value) || value === 'arguments';
 
-export function isLegal(str: string): boolean {
-	if (startsWithDigit(str) || blacklisted.has(str)) {
+export function isLegal(value: string): boolean {
+	if (needsEscape(value)) {
 		return false;
 	}
-	return !illegalCharacters.test(str);
+	return !illegalCharacters.test(value);
 }
 
-export function makeLegal(str: string): string {
-	str = str.replace(/-(\w)/g, (_, letter) => letter.toUpperCase()).replace(illegalCharacters, '_');
+export function makeLegal(value: string): string {
+	value = value
+		.replace(/-(\w)/g, (_, letter) => letter.toUpperCase())
+		.replace(illegalCharacters, '_');
 
-	if (startsWithDigit(str) || blacklisted.has(str)) str = `_${str}`;
+	if (needsEscape(value)) value = `_${value}`;
 
-	return str || '_';
+	return value || '_';
 }

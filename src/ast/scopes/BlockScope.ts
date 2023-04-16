@@ -1,14 +1,14 @@
-import { AstContext } from '../../Module';
-import Identifier from '../nodes/Identifier';
-import { ExpressionEntity } from '../nodes/shared/Expression';
-import LocalVariable from '../variables/LocalVariable';
+import type { AstContext } from '../../Module';
+import type Identifier from '../nodes/Identifier';
+import type { ExpressionEntity } from '../nodes/shared/Expression';
+import type LocalVariable from '../variables/LocalVariable';
 import ChildScope from './ChildScope';
 
 export default class BlockScope extends ChildScope {
 	addDeclaration(
 		identifier: Identifier,
 		context: AstContext,
-		init: ExpressionEntity | null,
+		init: ExpressionEntity,
 		isHoisted: boolean
 	): LocalVariable {
 		if (isHoisted) {

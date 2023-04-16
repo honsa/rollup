@@ -1,37 +1,39 @@
-import { CallOptions } from '../CallOptions';
-import { DeoptimizableEntity } from '../DeoptimizableEntity';
-import { HasEffectsContext } from '../ExecutionContext';
-import { NodeEvent } from '../NodeEvents';
-import { ObjectPath, PathTracker, UnknownInteger } from '../utils/PathTracker';
+import type { DeoptimizableEntity } from '../DeoptimizableEntity';
+import type { HasEffectsContext } from '../ExecutionContext';
+import type { NodeInteraction, NodeInteractionCalled } from '../NodeInteractions';
+import {
+	type ObjectPath,
+	type PathTracker,
+	UNKNOWN_PATH,
+	UnknownInteger
+} from '../utils/PathTracker';
 import { UNDEFINED_EXPRESSION, UNKNOWN_LITERAL_NUMBER } from '../values';
-import * as NodeType from './NodeType';
+import type * as NodeType from './NodeType';
 import SpreadElement from './SpreadElement';
 import { ARRAY_PROTOTYPE } from './shared/ArrayPrototype';
-import { ExpressionEntity, LiteralValueOrUnknown } from './shared/Expression';
-import { ExpressionNode, NodeBase } from './shared/Node';
-import { ObjectEntity, ObjectProperty } from './shared/ObjectEntity';
+import type { ExpressionEntity, LiteralValueOrUnknown } from './shared/Expression';
+import { type ExpressionNode, NodeBase } from './shared/Node';
+import { ObjectEntity, type ObjectProperty } from './shared/ObjectEntity';
 
 export default class ArrayExpression extends NodeBase {
-	declare elements: (ExpressionNode | SpreadElement | null)[];
+	declare elements: readonly (ExpressionNode | SpreadElement | null)[];
 	declare type: NodeType.tArrayExpression;
 	private objectEntity: ObjectEntity | null = null;
 
-	deoptimizePath(path: ObjectPath): void {
-		this.getObjectEntity().deoptimizePath(path);
-	}
-
-	deoptimizeThisOnEventAtPath(
-		event: NodeEvent,
+	deoptimizeArgumentsOnInteractionAtPath(
+		interaction: NodeInteraction,
 		path: ObjectPath,
-		thisParameter: ExpressionEntity,
 		recursionTracker: PathTracker
 	): void {
-		this.getObjectEntity().deoptimizeThisOnEventAtPath(
-			event,
+		this.getObjectEntity().deoptimizeArgumentsOnInteractionAtPath(
+			interaction,
 			path,
-			thisParameter,
 			recursionTracker
 		);
+	}
+
+	deoptimizePath(path: ObjectPath): void {
+		this.getObjectEntity().deoptimizePath(path);
 	}
 
 	getLiteralValueAtPath(
@@ -44,32 +46,37 @@ export default class ArrayExpression extends NodeBase {
 
 	getReturnExpressionWhenCalledAtPath(
 		path: ObjectPath,
-		callOptions: CallOptions,
+		interaction: NodeInteractionCalled,
 		recursionTracker: PathTracker,
 		origin: DeoptimizableEntity
-	): ExpressionEntity {
+	): [expression: ExpressionEntity, isPure: boolean] {
 		return this.getObjectEntity().getReturnExpressionWhenCalledAtPath(
 			path,
-			callOptions,
+			interaction,
 			recursionTracker,
 			origin
 		);
 	}
 
-	hasEffectsWhenAccessedAtPath(path: ObjectPath, context: HasEffectsContext): boolean {
-		return this.getObjectEntity().hasEffectsWhenAccessedAtPath(path, context);
-	}
-
-	hasEffectsWhenAssignedAtPath(path: ObjectPath, context: HasEffectsContext): boolean {
-		return this.getObjectEntity().hasEffectsWhenAssignedAtPath(path, context);
-	}
-
-	hasEffectsWhenCalledAtPath(
+	hasEffectsOnInteractionAtPath(
 		path: ObjectPath,
-		callOptions: CallOptions,
+		interaction: NodeInteraction,
 		context: HasEffectsContext
 	): boolean {
-		return this.getObjectEntity().hasEffectsWhenCalledAtPath(path, callOptions, context);
+		return this.getObjectEntity().hasEffectsOnInteractionAtPath(path, interaction, context);
+	}
+
+	protected applyDeoptimizations(): void {
+		this.deoptimized = true;
+		let hasSpread = false;
+		for (let index = 0; index < this.elements.length; index++) {
+			const element = this.elements[index];
+			if (element && (hasSpread || element instanceof SpreadElement)) {
+				hasSpread = true;
+				element.deoptimizePath(UNKNOWN_PATH);
+			}
+		}
+		this.context.requestTreeshakingPass();
 	}
 
 	private getObjectEntity(): ObjectEntity {
@@ -82,15 +89,15 @@ export default class ArrayExpression extends NodeBase {
 		let hasSpread = false;
 		for (let index = 0; index < this.elements.length; index++) {
 			const element = this.elements[index];
-			if (element instanceof SpreadElement || hasSpread) {
+			if (hasSpread || element instanceof SpreadElement) {
 				if (element) {
 					hasSpread = true;
 					properties.unshift({ key: UnknownInteger, kind: 'init', property: element });
 				}
-			} else if (!element) {
-				properties.push({ key: String(index), kind: 'init', property: UNDEFINED_EXPRESSION });
-			} else {
+			} else if (element) {
 				properties.push({ key: String(index), kind: 'init', property: element });
+			} else {
+				properties.push({ key: String(index), kind: 'init', property: UNDEFINED_EXPRESSION });
 			}
 		}
 		return (this.objectEntity = new ObjectEntity(properties, ARRAY_PROTOTYPE));

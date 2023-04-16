@@ -1,13 +1,14 @@
-import { Entity } from './Entity';
-import { ExpressionEntity } from './nodes/shared/Expression';
+import type { Entity } from './Entity';
+import type { ExpressionEntity } from './nodes/shared/Expression';
 import { DiscriminatedPathTracker, PathTracker } from './utils/PathTracker';
-import ThisVariable from './variables/ThisVariable';
+import type ThisVariable from './variables/ThisVariable';
 
 interface ExecutionContextIgnore {
 	breaks: boolean;
 	continues: boolean;
 	labels: Set<string>;
 	returnYield: boolean;
+	this: boolean;
 }
 
 export const BROKEN_FLOW_NONE = 0;
@@ -51,7 +52,8 @@ export function createHasEffectsContext(): HasEffectsContext {
 			breaks: false,
 			continues: false,
 			labels: new Set(),
-			returnYield: false
+			returnYield: false,
+			this: false
 		},
 		includedLabels: new Set(),
 		instantiated: new DiscriminatedPathTracker(),
